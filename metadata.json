@@ -1,0 +1,6 @@
+{
+  "name": "Text to Speech Voice Studio",
+  "description": "An interactive Text-to-Speech application with diverse AI and natural voice options, speech emotion and tone customization, audio synthesis, multi-speaker dialogue, and instant audio playback and export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
