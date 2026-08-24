@@ -43,10 +43,10 @@ export default function App() {
   // Tabs: AI Studio Single, AI Dialogue Mode, Native Browser Voices
   const [activeTab, setActiveTab] = useState<'ai-single' | 'ai-dialogue' | 'browser-native'>('ai-single');
   
-  // User Credits & Payment State (10 free trial credits, then ₹20 for 50 credits)
+  // User Credits & Payment State (100 free trial credits, then ₹20 for 100 credits)
   const [userCredits, setUserCredits] = useState<UserCreditsState>(() => {
     try {
-      const saved = localStorage.getItem('sonic_tts_credits_v1');
+      const saved = localStorage.getItem('sonic_tts_credits_v2');
       if (saved) {
         return JSON.parse(saved);
       }
@@ -54,7 +54,7 @@ export default function App() {
       console.warn('Failed to parse saved credits:', e);
     }
     return {
-      creditsRemaining: 10,
+      creditsRemaining: 100,
       totalUsed: 0,
       hasPurchasedPro: false,
       history: [],
@@ -330,10 +330,10 @@ export default function App() {
   const handleGenerateSpeech = async () => {
     if (!text.trim()) return;
 
-    // Check credits limit (First 10 free, then ₹20 required)
+    // Check credits limit (First 100 free, then ₹20 required)
     if (userCredits.creditsRemaining <= 0) {
       setIsPaymentModalOpen(true);
-      setErrorMessage('आपके 10 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
+      setErrorMessage('आपके 100 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
       return;
     }
 
@@ -424,7 +424,7 @@ export default function App() {
     // Check credits limit
     if (userCredits.creditsRemaining <= 0) {
       setIsPaymentModalOpen(true);
-      setErrorMessage('आपके 10 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
+      setErrorMessage('आपके 100 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
       return;
     }
 
