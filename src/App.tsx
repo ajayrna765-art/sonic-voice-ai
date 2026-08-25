@@ -25,16 +25,14 @@ import {
   GeneratedAudioItem,
   DialogueLine,
   PresetScript,
-  UserCreditsState,
-  PaymentTransaction,
 } from './types';
 import VoiceCard from './components/VoiceCard';
 import AudioPlayer from './components/AudioPlayer';
+import AudioVisualizer from './components/AudioVisualizer';
 import DialogueEditor from './components/DialogueEditor';
 import BrowserVoicesPicker from './components/BrowserVoicesPicker';
 import PresetPicker from './components/PresetPicker';
 import VoiceHistory from './components/VoiceHistory';
-import PaymentModal from './components/PaymentModal';
 
 // Client-side cache to avoid repeated network requests
 const clientAudioCache = new Map<string, string>();
@@ -42,25 +40,6 @@ const clientAudioCache = new Map<string, string>();
 export default function App() {
   // Tabs: AI Studio Single, AI Dialogue Mode, Native Browser Voices
   const [activeTab, setActiveTab] = useState<'ai-single' | 'ai-dialogue' | 'browser-native'>('ai-single');
-  
-  // User Credits & Payment State (100 free trial credits, then ₹20 for 100 credits)
-  const [userCredits, setUserCredits] = useState<UserCreditsState>(() => {
-    try {
-      const saved = localStorage.getItem('sonic_tts_credits_v2');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.warn('Failed to parse saved credits:', e);
-    }
-    return {
-      creditsRemaining: 100,
-      totalUsed: 0,
-      hasPurchasedPro: false,
-      history: [],
-    };
-  });
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
 
   // Single Voice Mode States (Defaults to Ananya - Hindi Exact Phonetic)
   const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(GEMINI_VOICES[0]);
@@ -291,49 +270,10 @@ export default function App() {
     }
   };
 
-  // Deduct 1 credit upon successful generation
-  const deductCredit = () => {
-    setUserCredits((prev) => {
-      const next: UserCreditsState = {
-        ...prev,
-        creditsRemaining: Math.max(0, prev.creditsRemaining - 1),
-        totalUsed: prev.totalUsed + 1,
-      };
-      try {
-        localStorage.setItem('sonic_tts_credits_v1', JSON.stringify(next));
-      } catch (e) {
-        console.warn('Failed to save credits to localStorage:', e);
-      }
-      return next;
-    });
-  };
-
-  // Payment recharge success handler
-  const handlePaymentSuccess = (creditsAdded: number, tx: PaymentTransaction) => {
-    setUserCredits((prev) => {
-      const next: UserCreditsState = {
-        ...prev,
-        creditsRemaining: prev.creditsRemaining + creditsAdded,
-        hasPurchasedPro: true,
-        history: [tx, ...(prev.history || [])],
-      };
-      try {
-        localStorage.setItem('sonic_tts_credits_v1', JSON.stringify(next));
-      } catch (e) {
-        console.warn('Failed to save credits to localStorage:', e);
-      }
-      return next;
-    });
-  };
-
   // Handle Full Speech Generation (Single Voice)
   const handleGenerateSpeech = async () => {
-    if (!text.trim()) return;
-
-    // Check credits limit (First 100 free, then ₹20 required)
-    if (userCredits.creditsRemaining <= 0) {
-      setIsPaymentModalOpen(true);
-      setErrorMessage('आपके 100 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
+    if (!text.trim()) {
+      setErrorMessage('कृपया ऊपर टेक्स्ट बॉक्स में कुछ शब्द या वाक्य टाइप करें जिसे आप आवाज़ में बदलना चाहते हैं।');
       return;
     }
 
@@ -349,7 +289,6 @@ export default function App() {
       setCurrentPlayingVoice(selectedVoice.name);
       const matchedStyle = SPEECH_STYLES.find((s) => s.id === speechStyle);
       setCurrentStyleName(matchedStyle ? matchedStyle.name : speechStyle);
-      deductCredit();
       setIsGenerating(false);
       return;
     }
@@ -370,10 +309,10 @@ export default function App() {
       const data = await res.json();
 
       if (res.status === 429 || data.rateLimited) {
-        const delay = data.retryDelay || 22;
+        const delay = data.retryDelay || 20;
         setCooldownSeconds(delay);
         setRateLimitNotice(
-          `Gemini TTS Free Tier rate limit reached (3 requests/min). Cooldown in ${delay}s. You can play your script immediately via the zero-delay Device Voice Engine below!`
+          `Gemini Free Tier दर सीमा (Rate limit) कूलडाउन में है (${delay}s शेष)। आप नीचे दिए गए 'Device Voice Engine' बटन से बिना रुके अभी तुरंत ऑडियो सुन सकते हैं!`
         );
         setIsGenerating(false);
         return;
@@ -392,9 +331,6 @@ export default function App() {
       const matchedStyle = SPEECH_STYLES.find((s) => s.id === speechStyle);
       setCurrentStyleName(matchedStyle ? matchedStyle.name : speechStyle);
 
-      // Deduct 1 credit for new generation
-      deductCredit();
-
       // Add to Session History
       const newHistoryItem: GeneratedAudioItem = {
         id: Date.now().toString(),
@@ -409,7 +345,7 @@ export default function App() {
       setHistory((prev) => [newHistoryItem, ...prev]);
     } catch (err: any) {
       console.error('Generation error:', err);
-      setErrorMessage(err.message || 'Speech generation encountered an error.');
+      setErrorMessage(err.message || 'Speech generation encountered an error. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -421,13 +357,6 @@ export default function App() {
     voiceA: string,
     voiceB: string
   ) => {
-    // Check credits limit
-    if (userCredits.creditsRemaining <= 0) {
-      setIsPaymentModalOpen(true);
-      setErrorMessage('आपके 100 मुफ्त ट्रायल उपयोग पूरे हो गए हैं। आगे वॉइस जनरेट करने के लिए ₹20 का पैक चुनें।');
-      return;
-    }
-
     setIsGenerating(true);
     setErrorMessage(null);
     setFallbackNotice(null);
@@ -442,7 +371,6 @@ export default function App() {
       setCurrentAudioText(combinedText);
       setCurrentPlayingVoice(`${voiceA} & ${voiceB}`);
       setCurrentStyleName('Dialogue Conversation');
-      deductCredit();
       setIsGenerating(false);
       return;
     }
@@ -481,9 +409,6 @@ export default function App() {
       setCurrentAudioText(combinedText);
       setCurrentPlayingVoice(`${voiceA} & ${voiceB}`);
       setCurrentStyleName('Dialogue Conversation');
-
-      // Deduct 1 credit
-      deductCredit();
 
       // Add to history
       const newHistoryItem: GeneratedAudioItem = {
@@ -651,33 +576,14 @@ export default function App() {
             </button>
           </nav>
 
-          {/* System Telemetry & Credit Status Header Widget */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Credit Status & Buy Button */}
-            <button
-              id="header-credits-btn"
-              type="button"
-              onClick={() => setIsPaymentModalOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
-                userCredits.creditsRemaining === 0
-                  ? 'bg-[#FF3366]/20 border-[#FF3366] text-[#FF3366] animate-pulse shadow-[0_0_12px_rgba(255,51,102,0.3)]'
-                  : userCredits.creditsRemaining <= 3
-                  ? 'bg-[#FFAA00]/15 border-[#FFAA00]/60 text-[#FFAA00]'
-                  : 'bg-[#11221C] border-[#005544] text-[#00FFCC] hover:border-[#00FFCC]'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>
-                {userCredits.creditsRemaining > 0
-                  ? `${userCredits.creditsRemaining} Credits`
-                  : '0 Credits'}
-              </span>
-              <span className="hidden sm:inline-block ml-1 text-[10px] bg-black/50 px-1.5 py-0.5 rounded text-[#00FFCC] font-normal border border-[#00FFCC]/30">
-                Recharge ₹20
-              </span>
-            </button>
+          {/* System Telemetry Header Widget */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg bg-[#11221C] border border-[#005544] text-[#00FFCC] text-xs font-mono">
+              <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-pulse" />
+              <span>Unlimited Neural Synthesis</span>
+            </div>
 
-            <div className="hidden md:flex items-center gap-4 border-l border-[#222] pl-3">
+            <div className="flex items-center gap-4 border-l border-[#222] pl-3">
               <div className="text-right">
                 <div className="text-[9px] text-[#666] uppercase font-bold tracking-wider font-mono">
                   Audio Engine Status
@@ -985,27 +891,21 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Credit Balance & Recharge Notice */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs font-mono">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${userCredits.creditsRemaining > 0 ? 'bg-[#00FFCC]' : 'bg-[#FF3366] animate-ping'}`} />
-                    <span className="text-[#AAA]">
-                      {userCredits.hasPurchasedPro ? (
-                        <>Active Pack: <strong className="text-white">{userCredits.creditsRemaining} Credits Remaining</strong></>
-                      ) : (
-                        <>Trial: <strong className="text-[#00FFCC]">{userCredits.creditsRemaining}/10 Free Uses Left</strong></>
-                      )}
+                {/* Live Voice Vibration & Frequency Waveform Visualizer */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] font-mono">
+                    <span className="text-[#888] uppercase tracking-wider flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${isGenerating || isNativePlaying || !!currentAudioUrl ? 'bg-[#00FFCC] animate-ping' : 'bg-[#444]'}`} />
+                      Voice Vibration Line • Live Waveform Monitor
+                    </span>
+                    <span className="text-[#00FFCC] font-bold">
+                      {isGenerating ? 'Synthesizing Waveform...' : isNativePlaying ? 'Playing Native Audio' : currentAudioUrl ? 'Active Audio Ready' : 'Standby / 24kHz'}
                     </span>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsPaymentModalOpen(true)}
-                    className="text-[11px] font-bold text-[#00FFCC] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Zap className="w-3 h-3 fill-current" />
-                    <span>{userCredits.creditsRemaining === 0 ? 'Buy Pack (₹20)' : '+Recharge ₹20'}</span>
-                  </button>
+                  <AudioVisualizer
+                    isPlaying={isGenerating || isNativePlaying || !!auditioningVoiceId || (!!currentAudioUrl && !isGenerating)}
+                    color="#00FFCC"
+                  />
                 </div>
 
                 {/* Primary Action Buttons */}
@@ -1013,19 +913,18 @@ export default function App() {
                   <button
                     id="synthesize-speech-btn"
                     type="button"
-                    disabled={isGenerating || !text.trim()}
+                    disabled={isGenerating}
                     onClick={handleGenerateSpeech}
-                    className="w-full py-4 px-6 rounded-xl bg-white hover:bg-[#00FFCC] text-black font-black uppercase text-xs tracking-widest transition-all shadow-[0_4px_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,255,204,0.4)] flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-40"
+                    className={`w-full py-4 px-6 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
+                      !text.trim()
+                        ? 'bg-[#333] text-[#888] hover:bg-[#444]'
+                        : 'bg-white hover:bg-[#00FFCC] text-black shadow-[0_4px_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,255,204,0.4)]'
+                    }`}
                   >
                     {isGenerating ? (
                       <>
                         <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                         <span>Synthesizing Voice Waveform...</span>
-                      </>
-                    ) : userCredits.creditsRemaining <= 0 ? (
-                      <>
-                        <Zap className="w-4 h-4 text-[#FF3366]" />
-                        <span>Recharge ₹20 to Generate Audio (Trial Complete)</span>
                       </>
                     ) : (
                       <>
@@ -1036,6 +935,26 @@ export default function App() {
                       </>
                     )}
                   </button>
+
+                  {/* Immediate in-panel Audio Player */}
+                  {(currentAudioUrl || isNativePlaying) && (
+                    <div className="mt-4 pt-4 border-t border-[#262626]">
+                      <AudioPlayer
+                        audioUrl={currentAudioUrl}
+                        text={currentAudioText}
+                        voiceName={currentPlayingVoice}
+                        styleName={currentStyleName}
+                        isNativeSpeechPlaying={isNativePlaying}
+                        onStopNativeSpeech={handleStopNativeSpeak}
+                        onPlayNativeSpeech={() => {
+                          if ('speechSynthesis' in window && currentAudioText) {
+                            const utter = new SpeechSynthesisUtterance(currentAudioText);
+                            window.speechSynthesis.speak(utter);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {/* Quick fallback button if cooldown active */}
                   {cooldownSeconds > 0 && (
@@ -1116,8 +1035,6 @@ export default function App() {
               voices={GEMINI_VOICES}
               onGenerateDialogue={handleGenerateDialogue}
               isGenerating={isGenerating}
-              creditsRemaining={userCredits.creditsRemaining}
-              onOpenRecharge={() => setIsPaymentModalOpen(true)}
             />
           </div>
         )}
@@ -1177,14 +1094,6 @@ export default function App() {
           />
         </section>
       </main>
-
-      {/* Payment & Credit Recharge Modal */}
-      <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        userCredits={userCredits}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
 
       {/* Geometric Balance Footer */}
       <footer className="border-t border-[#222] bg-[#050505] py-5 mt-12">

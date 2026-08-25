@@ -12,23 +12,23 @@ let aiClient: GoogleGenAI | null = null;
 const audioCache = new Map<string, string>();
 
 // Hard Cost & Bill Protection Shield (Max budget ceiling)
-const MAX_MONTHLY_ESTIMATED_COST_INR = 200; // Hard limit: ₹200 max budget protection
+const MAX_MONTHLY_ESTIMATED_COST_INR = 2000; // Hard limit: budget protection
 const COST_PER_CHARACTER_INR = 0.0001; // Approximate Gemini Flash TTS cost per char in INR
 let totalAccumulatedSpentINR = 0;
 let requestCountToday = 0;
-const MAX_DAILY_REQUESTS_CAP = 1500; // Hard stop after 1500 requests per day
+const MAX_DAILY_REQUESTS_CAP = 5000; // Daily maximum requests cap
 
-// IP-based Rate Limiter (Max 15 requests per 10 minutes per IP)
+// IP-based Rate Limiter (Max 100 requests per 10 minutes per IP)
 const ipRequestHistory = new Map<string, { count: number; firstRequestTime: number }>();
 
 function checkRateLimitAndBudget(clientIp: string, textLength: number): { allowed: boolean; reason?: string } {
   const estimatedCostForThis = textLength * COST_PER_CHARACTER_INR;
 
-  // 1. Hard Budget Protection (₹200 ceiling)
+  // 1. Hard Budget Protection
   if (totalAccumulatedSpentINR + estimatedCostForThis > MAX_MONTHLY_ESTIMATED_COST_INR) {
     return {
       allowed: false,
-      reason: `Hard Budget Safety Triggered: Monthly estimated limit (₹${MAX_MONTHLY_ESTIMATED_COST_INR}) reached. No further charges possible.`,
+      reason: `Monthly safety budget limit reached.`,
     };
   }
 
@@ -36,14 +36,14 @@ function checkRateLimitAndBudget(clientIp: string, textLength: number): { allowe
   if (requestCountToday >= MAX_DAILY_REQUESTS_CAP) {
     return {
       allowed: false,
-      reason: `Daily Maximum Generation Limit reached (${MAX_DAILY_REQUESTS_CAP} reqs). Reset at midnight.`,
+      reason: `Daily Maximum Generation Limit reached (${MAX_DAILY_REQUESTS_CAP} reqs).`,
     };
   }
 
-  // 3. Client IP Anti-Abuse Rate Limiter (Cooldown 15 reqs / 10 mins)
+  // 3. Client IP Anti-Abuse Rate Limiter (100 reqs / 10 mins)
   const now = Date.now();
   const windowMs = 10 * 60 * 1000;
-  const maxReqsPerWindow = 20;
+  const maxReqsPerWindow = 100;
 
   const record = ipRequestHistory.get(clientIp) || { count: 0, firstRequestTime: now };
 
@@ -127,29 +127,53 @@ function parseRetryDelay(errorMsg: string): number {
   return 20; // Default 20 second cooldown for free tier rate limit
 }
 
-// Voice resolution mapping
-const VOICE_RESOLVER: Record<string, { geminiVoice: string; language: string; promptGuide?: string }> = {
+// Voice resolution mapping with distinct voice models & vocal characteristics
+const VOICE_RESOLVER: Record<string, { geminiVoice: string; language: string; promptGuide: string }> = {
   Ananya: {
     geminiVoice: "Kore",
     language: "Hindi",
-    promptGuide: "Speak in a natural, authentic Indian Hindi voice. Critical: Pronounce every single word strictly letter-by-letter as written without altering phonemes (e.g. pronounce 'zh' with the exact voiced 'zh' sound, not 'jh').",
+    promptGuide: "Vocal Persona: Ananya (Female, Clear, Sweet Indian Hindi accent). High clarity, pleasant pitch. Critical: Pronounce every word strictly letter-by-letter as written without altering phonemes.",
   },
   Aarav: {
-    geminiVoice: "Puck",
+    geminiVoice: "Charon",
     language: "Hindi",
-    promptGuide: "Speak in a clear, resonant Indian Hindi male voice. Strictly maintain 100% exact phonetic accuracy for all Devanagari, romanized Hindi, and Hinglish words exactly as written.",
+    promptGuide: "Vocal Persona: Aarav (Male, Deep Baritone Indian Hindi broadcaster). Resonant chest voice, authoritative and articulate tone. Strictly preserve exact phonetic spelling.",
   },
   Kavya: {
     geminiVoice: "Aoede",
     language: "Hindi",
-    promptGuide: "Speak with a melodic, expressive Hindi storyteller tone. Follow exact phonetic letter precision for every Hindi and Romanized word.",
+    promptGuide: "Vocal Persona: Kavya (Female, Melodic, Poetic Hindi Storyteller). Soft, gentle, expressive storytelling inflection with pristine phonetic precision.",
   },
-  Kore: { geminiVoice: "Kore", language: "English" },
-  Puck: { geminiVoice: "Puck", language: "English" },
-  Charon: { geminiVoice: "Charon", language: "English" },
-  Fenrir: { geminiVoice: "Fenrir", language: "English" },
-  Zephyr: { geminiVoice: "Zephyr", language: "English" },
-  Aoede: { geminiVoice: "Aoede", language: "English" },
+  Kore: {
+    geminiVoice: "Kore",
+    language: "English",
+    promptGuide: "Vocal Persona: Kore (Female, Warm, Conversational American tone). Friendly, comforting, and natural.",
+  },
+  Puck: {
+    geminiVoice: "Puck",
+    language: "English",
+    promptGuide: "Vocal Persona: Puck (Male, Youthful, High-Energy, Playful). Quick, enthusiastic, and vibrant pacing.",
+  },
+  Charon: {
+    geminiVoice: "Charon",
+    language: "English",
+    promptGuide: "Vocal Persona: Charon (Male, Deep Cinematic Baritone). Slow, gravelly, dramatic documentary narration.",
+  },
+  Fenrir: {
+    geminiVoice: "Fenrir",
+    language: "English",
+    promptGuide: "Vocal Persona: Fenrir (Male, Bold, Powerful, Commanding). Confident, intense, and authoritative delivery.",
+  },
+  Zephyr: {
+    geminiVoice: "Zephyr",
+    language: "English",
+    promptGuide: "Vocal Persona: Zephyr (Female, Gentle, Whispering, Calming). Soft, meditative, airy, and soothing flow.",
+  },
+  Aoede: {
+    geminiVoice: "Aoede",
+    language: "English",
+    promptGuide: "Vocal Persona: Aoede (Female, Sophisticated, Theatrical, Classical). Dramatic, expressive, and lyrical articulation.",
+  },
 };
 
 async function startServer() {
@@ -248,7 +272,10 @@ async function startServer() {
         }
       }
 
-      const fullPrompt = `${phoneticInstruction}${promptText}`;
+      const personaGuide = (voiceConfig && 'promptGuide' in voiceConfig && voiceConfig.promptGuide) 
+        ? `[${voiceConfig.promptGuide}]\n` 
+        : '';
+      const fullPrompt = `${personaGuide}${phoneticInstruction}${promptText}`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.1-flash-tts-preview",

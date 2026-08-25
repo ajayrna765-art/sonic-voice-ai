@@ -10,8 +10,6 @@ interface DialogueEditorProps {
     voiceB: string
   ) => void;
   isGenerating: boolean;
-  creditsRemaining?: number;
-  onOpenRecharge?: () => void;
 }
 
 const DEFAULT_DIALOGUE: DialogueLine[] = [
@@ -45,8 +43,6 @@ export default function DialogueEditor({
   voices,
   onGenerateDialogue,
   isGenerating,
-  creditsRemaining = 10,
-  onOpenRecharge,
 }: DialogueEditorProps) {
   const [lines, setLines] = useState<DialogueLine[]>(DEFAULT_DIALOGUE);
   const [speakerAVoice, setSpeakerAVoice] = useState<string>('Ananya');
@@ -234,43 +230,19 @@ export default function DialogueEditor({
         </div>
       </div>
 
-      {/* Generate Action Button & Credits notice */}
-      <div className="pt-2 space-y-2">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#141414] border border-[#2A2A2A] text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${creditsRemaining > 0 ? 'bg-[#00FFCC]' : 'bg-[#FF3366] animate-ping'}`} />
-            <span className="text-[#AAA]">
-              Available Credits: <strong className={creditsRemaining > 0 ? 'text-[#00FFCC]' : 'text-[#FF3366]'}>{creditsRemaining} Left</strong>
-            </span>
-          </div>
-          {onOpenRecharge && (
-            <button
-              type="button"
-              onClick={onOpenRecharge}
-              className="text-[11px] font-bold text-[#00FFCC] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Zap className="w-3 h-3 fill-current" />
-              <span>{creditsRemaining <= 0 ? 'Buy Credits (₹20)' : '+Recharge ₹20'}</span>
-            </button>
-          )}
-        </div>
-
+      {/* Generate Action Button */}
+      <div className="pt-2">
         <button
           id="synthesize-dialogue-btn"
           type="button"
           disabled={isGenerating || lines.every((l) => !l.text.trim())}
           onClick={handleGenerate}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-[#00FFCC] text-black font-black uppercase text-xs tracking-widest transition-all shadow-[0_4px_20px_rgba(255,255,255,0.1)] cursor-pointer disabled:opacity-40"
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-[#00FFCC] text-black font-black uppercase text-xs tracking-widest transition-all shadow-[0_4px_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,255,204,0.4)] cursor-pointer disabled:opacity-40"
         >
           {isGenerating ? (
             <>
               <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               <span>Synthesizing Dual Neural Speech...</span>
-            </>
-          ) : creditsRemaining <= 0 ? (
-            <>
-              <Zap className="w-4 h-4 text-[#FF3366]" />
-              <span>Recharge ₹20 to Synthesize Dialogue</span>
             </>
           ) : (
             <>
