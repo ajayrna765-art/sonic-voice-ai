@@ -128,7 +128,45 @@ export default function App() {
     const voices = window.speechSynthesis.getVoices();
 
     // Map voice personas to speech synthesis attributes
-    if (voiceName === 'Ananya') {
+    if (voiceName === 'Aarav') {
+      utter.pitch = 0.85;
+      utter.rate = 1.0;
+      const hindiMale = voices.find(
+        (v) =>
+          (v.lang.startsWith('hi') || v.lang === 'hi-IN') &&
+          (v.name.includes('Male') || v.name.includes('Madhur') || v.name.includes('Hemant') || v.name.includes('Neel'))
+      );
+      const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
+      if (hindiMale) utter.voice = hindiMale;
+      else if (anyHindi) utter.voice = anyHindi;
+    } else if (voiceName === 'Kabir') {
+      utter.pitch = 1.1;
+      utter.rate = 1.12;
+      const hindiMale = voices.find(
+        (v) =>
+          (v.lang.startsWith('hi') || v.lang === 'hi-IN') &&
+          (v.name.includes('Male') || v.name.includes('Madhur') || v.name.includes('Neel'))
+      );
+      const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
+      if (hindiMale) utter.voice = hindiMale;
+      else if (anyHindi) utter.voice = anyHindi;
+    } else if (voiceName === 'Vikram') {
+      utter.pitch = 0.68;
+      utter.rate = 0.9;
+      const hindiMale = voices.find(
+        (v) =>
+          (v.lang.startsWith('hi') || v.lang === 'hi-IN') &&
+          (v.name.includes('Male') || v.name.includes('Hemant') || v.name.includes('Madhur'))
+      );
+      const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
+      if (hindiMale) utter.voice = hindiMale;
+      else if (anyHindi) utter.voice = anyHindi;
+    } else if (voiceName === 'Rohan') {
+      utter.pitch = 0.95;
+      utter.rate = 1.02;
+      const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
+      if (anyHindi) utter.voice = anyHindi;
+    } else if (voiceName === 'Ananya') {
       utter.pitch = 1.05;
       utter.rate = 0.98;
       const hindiFemale = voices.find(
@@ -138,17 +176,6 @@ export default function App() {
       );
       const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
       if (hindiFemale) utter.voice = hindiFemale;
-      else if (anyHindi) utter.voice = anyHindi;
-    } else if (voiceName === 'Aarav') {
-      utter.pitch = 0.92;
-      utter.rate = 1.0;
-      const hindiMale = voices.find(
-        (v) =>
-          (v.lang.startsWith('hi') || v.lang === 'hi-IN') &&
-          (v.name.includes('Male') || v.name.includes('Madhur') || v.name.includes('Hemant') || v.name.includes('Neel'))
-      );
-      const anyHindi = voices.find((v) => v.lang.startsWith('hi') || v.lang === 'hi-IN' || v.name.includes('Hindi'));
-      if (hindiMale) utter.voice = hindiMale;
       else if (anyHindi) utter.voice = anyHindi;
     } else if (voiceName === 'Kavya') {
       utter.pitch = 1.15;
@@ -181,10 +208,15 @@ export default function App() {
       utter.rate = 1.0;
     }
 
+    utter.onstart = () => {
+      setIsNativePlaying(true);
+    };
     utter.onend = () => {
+      setIsNativePlaying(false);
       if (onEnd) onEnd();
     };
     utter.onerror = () => {
+      setIsNativePlaying(false);
       if (onEnd) onEnd();
     };
 
@@ -312,9 +344,15 @@ export default function App() {
         const delay = data.retryDelay || 20;
         setCooldownSeconds(delay);
         setRateLimitNotice(
-          `Gemini Free Tier दर सीमा (Rate limit) कूलडाउन में है (${delay}s शेष)। आप नीचे दिए गए 'Device Voice Engine' बटन से बिना रुके अभी तुरंत ऑडियो सुन सकते हैं!`
+          `Gemini API दर सीमा कूलडाउन में है (${delay}s शेष)। बैकअप इंजन से आपकी आवाज़ तुरंत बज रही है!`
         );
+        setCurrentAudioUrl(null);
+        setCurrentAudioText(text.trim());
+        setCurrentPlayingVoice(selectedVoice.name);
+        const matchedStyle = SPEECH_STYLES.find((s) => s.id === speechStyle);
+        setCurrentStyleName(matchedStyle ? matchedStyle.name : speechStyle);
         setIsGenerating(false);
+        playVoiceViaBrowserSpeech(selectedVoice.name, text.trim());
         return;
       }
 
@@ -344,8 +382,12 @@ export default function App() {
       };
       setHistory((prev) => [newHistoryItem, ...prev]);
     } catch (err: any) {
-      console.error('Generation error:', err);
-      setErrorMessage(err.message || 'Speech generation encountered an error. Please try again.');
+      console.warn('Speech API error, seamlessly playing via browser speech fallback:', err);
+      setCurrentAudioUrl(null);
+      setCurrentAudioText(text.trim());
+      setCurrentPlayingVoice(selectedVoice.name);
+      setFallbackNotice('ऑडियो सीधे बैकअप इंजन से तुरंत प्ले किया गया।');
+      playVoiceViaBrowserSpeech(selectedVoice.name, text.trim());
     } finally {
       setIsGenerating(false);
     }
@@ -389,12 +431,14 @@ export default function App() {
       const data = await res.json();
 
       if (res.status === 429 || data.rateLimited) {
-        const delay = data.retryDelay || 22;
+        const delay = data.retryDelay || 20;
         setCooldownSeconds(delay);
         setRateLimitNotice(
-          `Gemini TTS Free Tier rate limit reached (3 requests/min). Cooldown in ${delay}s.`
+          `Gemini Free Tier दर सीमा कूलडाउन में है (${delay}s)।`
         );
         setIsGenerating(false);
+        const combinedText = lines.map((l) => `${l.speaker}: ${l.text}`).join('। ');
+        playVoiceViaBrowserSpeech(voiceA, combinedText);
         return;
       }
 
@@ -422,8 +466,9 @@ export default function App() {
       };
       setHistory((prev) => [newHistoryItem, ...prev]);
     } catch (err: any) {
-      console.error('Dialogue error:', err);
-      setErrorMessage(err.message || 'Dialogue generation error.');
+      console.warn('Dialogue error, falling back:', err);
+      const combinedText = lines.map((l) => `${l.speaker}: ${l.text}`).join('। ');
+      playVoiceViaBrowserSpeech(voiceA, combinedText);
     } finally {
       setIsGenerating(false);
     }
@@ -982,22 +1027,44 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* Language Filters */}
-                  <div className="flex items-center bg-[#111] p-0.5 rounded border border-[#333] text-[10px] font-mono">
-                    {(['All', 'Hindi', 'English'] as const).map((lang) => (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => setLanguageFilter(lang)}
-                        className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                          languageFilter === lang
-                            ? 'bg-[#00FFCC] text-black font-bold'
-                            : 'text-[#888] hover:text-[#CCC]'
-                        }`}
-                      >
-                        {lang === 'Hindi' ? '🇮🇳 Hindi' : lang}
-                      </button>
-                    ))}
+                  {/* Filters: Gender & Language */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Gender Tabs */}
+                    <div className="flex items-center bg-[#111] p-0.5 rounded border border-[#333] text-[10px] font-mono">
+                      {(['All', 'Male', 'Female'] as const).map((g) => (
+                        <button
+                          key={g}
+                          id={`gender-filter-${g.toLowerCase()}`}
+                          type="button"
+                          onClick={() => setGenderFilter(g)}
+                          className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                            genderFilter === g
+                              ? 'bg-[#00FFCC] text-black font-bold'
+                              : 'text-[#888] hover:text-[#CCC]'
+                          }`}
+                        >
+                          {g === 'Male' ? '👨 पुरुष (Male)' : g === 'Female' ? '👩 महिला (Female)' : 'All'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Language Tabs */}
+                    <div className="flex items-center bg-[#111] p-0.5 rounded border border-[#333] text-[10px] font-mono">
+                      {(['All', 'Hindi', 'English'] as const).map((lang) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setLanguageFilter(lang)}
+                          className={`px-2 py-1 rounded transition-colors cursor-pointer ${
+                            languageFilter === lang
+                              ? 'bg-white text-black font-bold'
+                              : 'text-[#888] hover:text-[#CCC]'
+                          }`}
+                        >
+                          {lang === 'Hindi' ? '🇮🇳 Hindi' : lang}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

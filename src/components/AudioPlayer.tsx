@@ -46,13 +46,18 @@ export default function AudioPlayer({
   // Sync state with audio element
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioUrl) return;
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleLoadedMetadata = () => {
       setDuration(audio.duration || 0);
       setCurrentTime(0);
-      audio.play().catch(() => {});
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    };
+    const handleCanPlay = () => {
+      if (audio.paused && audio.currentTime === 0) {
+        audio.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
     };
     const handleEnded = () => {
       setIsPlaying(false);
@@ -63,13 +68,19 @@ export default function AudioPlayer({
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
 
+    // Explicit load & play attempt for fresh URLs
+    audio.load();
+    audio.play().then(() => setIsPlaying(true)).catch(() => {});
+
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);

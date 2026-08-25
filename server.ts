@@ -129,15 +129,30 @@ function parseRetryDelay(errorMsg: string): number {
 
 // Voice resolution mapping with distinct voice models & vocal characteristics
 const VOICE_RESOLVER: Record<string, { geminiVoice: string; language: string; promptGuide: string }> = {
+  Aarav: {
+    geminiVoice: "Charon",
+    language: "Hindi",
+    promptGuide: "Vocal Persona: Aarav (Male, Deep Baritone Indian Hindi broadcaster). Deep resonant masculine chest voice, authoritative, news anchor and podcast tone. Strictly preserve exact phonetic spelling.",
+  },
+  Kabir: {
+    geminiVoice: "Puck",
+    language: "Hindi",
+    promptGuide: "Vocal Persona: Kabir (Male, Energetic & Youthful Indian Hindi speaker). Dynamic, lively young Indian man tone, high energy, crisp modern conversational style.",
+  },
+  Vikram: {
+    geminiVoice: "Fenrir",
+    language: "Hindi",
+    promptGuide: "Vocal Persona: Vikram (Male, Heavy & Powerful Cinematic Hindi Bass). Deep, commanding, heavy dramatic masculine bass voice for trailers, epic narrations and motivation.",
+  },
+  Rohan: {
+    geminiVoice: "Puck",
+    language: "Hindi",
+    promptGuide: "Vocal Persona: Rohan (Male, Smooth & Friendly Indian Hindi narrator). Warm, friendly, approachable Indian young man voice, great for tutorials and stories.",
+  },
   Ananya: {
     geminiVoice: "Kore",
     language: "Hindi",
     promptGuide: "Vocal Persona: Ananya (Female, Clear, Sweet Indian Hindi accent). High clarity, pleasant pitch. Critical: Pronounce every word strictly letter-by-letter as written without altering phonemes.",
-  },
-  Aarav: {
-    geminiVoice: "Charon",
-    language: "Hindi",
-    promptGuide: "Vocal Persona: Aarav (Male, Deep Baritone Indian Hindi broadcaster). Resonant chest voice, authoritative and articulate tone. Strictly preserve exact phonetic spelling.",
   },
   Kavya: {
     geminiVoice: "Aoede",
