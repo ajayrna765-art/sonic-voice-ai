@@ -936,25 +936,8 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Live Voice Vibration & Frequency Waveform Visualizer */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-mono">
-                    <span className="text-[#888] uppercase tracking-wider flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${isGenerating || isNativePlaying || !!currentAudioUrl ? 'bg-[#00FFCC] animate-ping' : 'bg-[#444]'}`} />
-                      Voice Vibration Line • Live Waveform Monitor
-                    </span>
-                    <span className="text-[#00FFCC] font-bold">
-                      {isGenerating ? 'Synthesizing Waveform...' : isNativePlaying ? 'Playing Native Audio' : currentAudioUrl ? 'Active Audio Ready' : 'Standby / 24kHz'}
-                    </span>
-                  </div>
-                  <AudioVisualizer
-                    isPlaying={isGenerating || isNativePlaying || !!auditioningVoiceId || (!!currentAudioUrl && !isGenerating)}
-                    color="#00FFCC"
-                  />
-                </div>
-
                 {/* Primary Action Buttons */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <button
                     id="synthesize-speech-btn"
                     type="button"
@@ -963,25 +946,25 @@ export default function App() {
                     className={`w-full py-4 px-6 rounded-xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
                       !text.trim()
                         ? 'bg-[#333] text-[#888] hover:bg-[#444]'
-                        : 'bg-white hover:bg-[#00FFCC] text-black shadow-[0_4px_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,255,204,0.4)]'
+                        : 'bg-[#00FFCC] hover:bg-[#00E6B8] text-black shadow-[0_4px_20px_rgba(0,255,204,0.25)] hover:shadow-[0_0_25px_rgba(0,255,204,0.5)]'
                     }`}
                   >
                     {isGenerating ? (
                       <>
                         <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        <span>Synthesizing Voice Waveform...</span>
+                        <span>Generating Audio...</span>
                       </>
                     ) : (
                       <>
                         <Radio className="w-4 h-4" />
                         <span>
-                          Generate Audio with {selectedVoice.name} {selectedVoice.hindiName ? `(${selectedVoice.hindiName})` : ''}
+                          Generate Voice with {selectedVoice.name} {selectedVoice.hindiName ? `(${selectedVoice.hindiName})` : ''}
                         </span>
                       </>
                     )}
                   </button>
 
-                  {/* Immediate in-panel Audio Player */}
+                  {/* Immediate in-panel Audio Player with direct Download button */}
                   {(currentAudioUrl || isNativePlaying) && (
                     <div className="mt-4 pt-4 border-t border-[#262626]">
                       <AudioPlayer
@@ -1131,25 +1114,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Active Audio Player Section */}
-        {(currentAudioUrl || isNativePlaying) && (
-          <section id="audio-output-section" className="pt-2">
-            <AudioPlayer
-              audioUrl={currentAudioUrl}
-              text={currentAudioText}
-              voiceName={currentPlayingVoice}
-              styleName={currentStyleName}
-              isNativeSpeechPlaying={isNativePlaying}
-              onStopNativeSpeech={handleStopNativeSpeak}
-              onPlayNativeSpeech={() => {
-                if ('speechSynthesis' in window && currentAudioText) {
-                  const utter = new SpeechSynthesisUtterance(currentAudioText);
-                  window.speechSynthesis.speak(utter);
-                }
-              }}
-            />
-          </section>
-        )}
+
 
         {/* Session History Section */}
         <section id="session-history-section" className="pt-4">

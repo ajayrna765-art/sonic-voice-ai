@@ -219,11 +219,11 @@ export default function AudioPlayer({
               id="download-wav-btn"
               type="button"
               onClick={handleDownload}
-              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded bg-[#00FFCC] text-black hover:bg-[#00E6B8] shadow-[0_0_12px_rgba(0,255,204,0.25)] transition-all cursor-pointer"
-              title="Download high-quality WAV audio"
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg bg-[#00FFCC] text-black hover:bg-[#00E6B8] shadow-[0_0_15px_rgba(0,255,204,0.3)] transition-all cursor-pointer font-sans"
+              title="Download high-quality WAV audio file"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export WAV</span>
+              <Download className="w-4 h-4" />
+              <span>⬇️ Download Audio (WAV)</span>
             </button>
           )}
         </div>
